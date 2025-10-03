@@ -4,18 +4,14 @@ class UsersController < ApplicationController
   # POST /signup
   def signup
     if params[:user_id].blank? || params[:password].blank?
-      render json: {
-        message: "Account creation failed",
-        cause: "Required user_id and password"
-      }, status: :bad_request
-      return
+      render json: { message: "Account creation failed" }, status: :bad_request and return
     end
 
     user = User.new(user_id: params[:user_id], password: params[:password])
     if user.save
       render json: { message: "Account successfully created" }, status: :ok
     else
-      render json: { message: "Account creation failed", cause: user.errors.full_messages }, status: :bad_request
+      render json: { message: "Account creation failed" }, status: :bad_request
     end
   end
 
@@ -64,11 +60,14 @@ class UsersController < ApplicationController
 
   def authenticate
     authenticate_or_request_with_http_basic do |user_id, password|
-      @current_user = User.find_by(user_id: user_id)&.authenticate(password)
+      user = User.find_by(user_id: user_id)
+      if user&.authenticate(password)
+        @current_user = user
+      else
+        render json: { message: "Authentication failed" }, status: :unauthorized and return
+      end
     end
-
-    unless @current_user
-      render json: { message: "Authentication failed" }, status: :unauthorized
-    end
+  rescue
+    render json: { message: "Authentication failed" }, status: :unauthorized
   end
 end
