@@ -4,46 +4,55 @@ class UsersController < ApplicationController
   # POST /signup
   def signup
     if params[:user_id].blank? || params[:password].blank?
-      render json: { message: "Account creation failed" }, status: :bad_request and return
+      render json: {
+        message: "Account creation failed",
+        cause: "Required user_id and password"
+      }, status: :bad_request and return
     end
 
-    user = User.new(user_id: params[:user_id], password: params[:password])
+    user = User.new(
+      user_id: params[:user_id],
+      password: params[:password],
+      nickname: params[:nickname],
+      comment: params[:comment]
+    )
+
     if user.save
       render json: { message: "Account successfully created" }, status: :ok
     else
-      render json: { message: "Account creation failed" }, status: :bad_request
+      render json: {
+        message: "Account creation failed",
+        cause: user.errors.full_messages.join(", ")
+      }, status: :bad_request
     end
   end
 
   # GET /users/:id
   def show
     user = User.find_by(user_id: params[:id])
-
     if user
       render json: {
         message: "User details by user_id",
-        user: {
-          user_id: user.user_id,
-          nickname: user.nickname,
-          comment: user.comment
-        }
+        user_id: user.user_id,
+        nickname: user.nickname,
+        comment: user.comment
       }, status: :ok
     else
-      render json: { message: "No user found" }, status: :not_found
+      render json: { message: "User not found" }, status: :not_found
     end
   end
 
   # PATCH /users/:id
   def update
-    if @current_user.user_id != params[:id]
-      render json: { message: "No permission for update" }, status: :forbidden
-      return
-    end
+    return render(json: { message: "No permission for update" }, status: :forbidden) unless @current_user.user_id == params[:id]
 
     if @current_user.update(nickname: params[:nickname], comment: params[:comment])
       render json: { message: "User successfully updated" }, status: :ok
     else
-      render json: { message: "Update failed" }, status: :bad_request
+      render json: {
+        message: "Update failed",
+        cause: @current_user.errors.full_messages.join(", ")
+      }, status: :bad_request
     end
   end
 
@@ -52,7 +61,7 @@ class UsersController < ApplicationController
     if @current_user.destroy
       render json: { message: "Account and user successfully removed" }, status: :ok
     else
-      render json: { message: "Failed to remove account" }, status: :bad_request
+      render json: { message: "Account closure failed" }, status: :bad_request
     end
   end
 
@@ -67,7 +76,5 @@ class UsersController < ApplicationController
         render json: { message: "Authentication failed" }, status: :unauthorized and return
       end
     end
-  rescue
-    render json: { message: "Authentication failed" }, status: :unauthorized
   end
 end
